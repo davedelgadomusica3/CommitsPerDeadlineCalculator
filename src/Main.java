@@ -1,5 +1,7 @@
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import org.joda.time.DateTime;
+import org.joda.time.Weeks;
+
+import java.io.*;
 import java.util.*;
 
 public class Main {
@@ -11,88 +13,132 @@ public class Main {
 
     public static void main(String[] args) {
 
-        initialize();
-        int totalRepoCommits = 0;
-        int totalRepoCommits2 = 0;
-        //Obtain Working Directory
-        String repoNameCommand = "pwd";
-        ArrayList repoName = executeCommand(repoNameCommand);
-        System.out.println("--------------------------------------------------------");
-        System.out.println("Working Directory: " + repoName.get(0));
+        File parametrization = new File("deadlines.txt");
 
+        if (parametrization.exists()) {
 
-        //Obtain Git Commit Dates
-        String command = "git log --pretty=%cd";
-        ArrayList<String> output = executeCommand(command);
-        ArrayList<Integer> commitTracking = new ArrayList<Integer>();
-
-        for (int i = 0; i < output.size(); i++) {
-            commitTracking.add(0);
-        }
-
-        for (int[] deadline : deadlines) {
-
-
-            int[] commits = {0, 0, 0, 0, 0, 0, 0};
-            int totalCommits = 0;
-            int initialDateDayOfWeek = deadline[0];
-            int initialDateMonth = deadline[1];
-            int initialDateDayOfMonth = deadline[2];
-            int finalDateDayOfWeek = deadline[3];
-            int finalDateMonth = deadline[4];
-            int finalDateDayOfMonth = deadline[5];
-
-            Calendar calendar = Calendar.getInstance();
-
-            calendar.set(Calendar.MONTH, initialDateMonth - 1);
-            calendar.set(Calendar.DATE, initialDateDayOfMonth);
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            Date initialDate = calendar.getTime();
-
-            calendar.set(Calendar.MONTH, finalDateMonth - 1);
-            calendar.set(Calendar.DATE, finalDateDayOfMonth);
-            calendar.set(Calendar.HOUR_OF_DAY, 23);
-            calendar.set(Calendar.MINUTE, 59);
-            calendar.set(Calendar.SECOND, 59);
-            Date finalDate = calendar.getTime();
-
-            //Each line is one commit
-            for (String line : output) {
-
-                if (deadlines.indexOf(deadline) == 0) {
-                    totalRepoCommits++;
+            FileReader streamToRead = null;
+            try {
+                streamToRead = new FileReader(parametrization);
+                BufferedReader reader = new BufferedReader(streamToRead);
+                String line = "";
+                while((line = reader.readLine()) != null){
+                    int[] deathline = { Integer.valueOf(line.substring(0,2)),Integer.valueOf(line.substring(3,5)),Integer.valueOf(line.substring(6,10)),Integer.valueOf(line.substring(11,13)),Integer.valueOf(line.substring(14,16)),Integer.valueOf(line.substring(17,21)) };
+                    deadlines.add(deathline);
                 }
 
-                //Get the day of the week
-                String dayOfWeek = line.substring(0, line.indexOf(" ", 0)).toLowerCase();
-                int dayOfWeekInt = daysOfWeek.get(dayOfWeek);
-
-                //Get the day of the week
-                String monthOfYear = line.substring(line.indexOf(" ", 0) + 1, line.indexOf(" ", 4)).toLowerCase();
-                int monthOfYearInt = monthsOfYear.get(monthOfYear);
-
-                int dayOfMonth = Integer.valueOf(line.substring(line.indexOf(" ", 4) + 1, line.indexOf(" ", 8)).toLowerCase());
-
-                //Inside DeathLine
-
-                calendar.set(Calendar.MONTH, monthOfYearInt - 1);
-                calendar.set(Calendar.DATE, dayOfMonth);
-                calendar.set(Calendar.SECOND, 1);
-                Date commitDate = calendar.getTime();
-
-                if (commitDate.getTime() >= initialDate.getTime() && commitDate.getTime() < finalDate.getTime()) {
-                    totalCommits++;
-                    commits[dayOfWeekInt - 1] = commits[dayOfWeekInt - 1] + 1;
-                    commitTracking.set(output.indexOf(line), 1);
-                }
-
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
 
-            System.out.println("________________________________________________________________________________________ ");
-            System.out.println("Deathline " + deadlines.indexOf(deadline) + " (" + initialDate + " to " + finalDate + "): ");
-            System.out.println();
+
+            initialize();
+            int totalRepoCommits = 0;
+            int totalRepoCommits2 = 0;
+            //Obtain Working Directory
+            String repoNameCommand = "pwd";
+            ArrayList repoName = executeCommand(repoNameCommand);
+            System.out.println("--------------------------------------------------------");
+            System.out.println("Working Directory: " + repoName.get(0));
+
+
+            //Obtain Git Commit Dates
+            String command = "git log --pretty=%cd --all";
+            ArrayList<String> output = executeCommand(command);
+            Collections.reverse(output);
+            ArrayList<Integer> commitTracking = new ArrayList<Integer>();
+
+            for (int i = 0; i < output.size(); i++) {
+                commitTracking.add(0);
+            }
+
+            for (int[] deadline : deadlines) {
+
+                int actualNumberOfWeeks = 0;
+                int[] commits = {0, 0, 0, 0, 0, 0, 0};
+                int totalCommits = 0;
+                ArrayList<Integer> perWeekCommits = new ArrayList<Integer>();
+                perWeekCommits.add(0);
+                int actualWeekWorking = 0;
+                int initialDateYear = deadline[2];
+                int initialDateMonth = deadline[1];
+                int initialDateDayOfMonth = deadline[0];
+                int finalDateYear = deadline[5];
+                int finalDateMonth = deadline[4];
+                int finalDateDayOfMonth = deadline[3];
+                Calendar calendar = Calendar.getInstance();
+
+                calendar.set(Calendar.YEAR, initialDateYear);
+                calendar.set(Calendar.MONTH, initialDateMonth - 1);
+                calendar.set(Calendar.DATE, initialDateDayOfMonth);
+                calendar.set(Calendar.HOUR_OF_DAY, 0);
+                calendar.set(Calendar.MINUTE, 0);
+                calendar.set(Calendar.SECOND, 0);
+                Date initialDate = calendar.getTime();
+
+                calendar.set(Calendar.YEAR, finalDateYear);
+                calendar.set(Calendar.MONTH, finalDateMonth - 1);
+                calendar.set(Calendar.DATE, finalDateDayOfMonth);
+                calendar.set(Calendar.HOUR_OF_DAY, 23);
+                calendar.set(Calendar.MINUTE, 59);
+                calendar.set(Calendar.SECOND, 59);
+                Date finalDate = calendar.getTime();
+
+
+                //Each line is one commit
+                for (String line : output) {
+
+                    if (deadlines.indexOf(deadline) == 0) {
+                        totalRepoCommits++;
+                    }
+
+                    //Get the day of the week
+                    String dayOfWeek = line.substring(0, line.indexOf(" ", 0)).toLowerCase();
+                    int dayOfWeekInt = daysOfWeek.get(dayOfWeek);
+
+                    //Get the day of the week
+                    String monthOfYear = line.substring(line.indexOf(" ", 0) + 1, line.indexOf(" ", 4)).toLowerCase();
+                    int monthOfYearInt = monthsOfYear.get(monthOfYear);
+
+                    int dayOfMonth = Integer.valueOf(line.substring(line.indexOf(" ", 4) + 1, line.indexOf(" ", 8)).toLowerCase());
+
+                    int yearOfCommit = Integer.valueOf(line.substring(line.indexOf(" ", 15) + 1, line.indexOf(" ", 15) + 5).toLowerCase());
+
+
+                    //Inside DeathLine
+                    calendar.set(Calendar.YEAR, yearOfCommit);
+                    calendar.set(Calendar.MONTH, monthOfYearInt - 1);
+                    calendar.set(Calendar.DATE, dayOfMonth);
+                    calendar.set(Calendar.SECOND, 1);
+                    Date commitDate = calendar.getTime();
+
+                    if (commitDate.getTime() >= initialDate.getTime() && commitDate.getTime() < finalDate.getTime()) {
+
+                        DateTime initialDateTime = new DateTime(initialDate);
+                        DateTime commitDateTime = new DateTime(commitDate);
+
+                        if (Weeks.weeksBetween(initialDateTime, commitDateTime).getWeeks() > actualNumberOfWeeks) {
+                            actualWeekWorking++;
+                            actualNumberOfWeeks = Weeks.weeksBetween(initialDateTime, commitDateTime).getWeeks();
+                            perWeekCommits.add(1);
+                        } else {
+                            perWeekCommits.set(actualWeekWorking, perWeekCommits.get(actualWeekWorking) + 1);
+                        }
+
+                        totalCommits++;
+                        commits[dayOfWeekInt - 1] = commits[dayOfWeekInt - 1] + 1;
+                        commitTracking.set(output.indexOf(line), 1);
+
+                    }
+
+                }
+
+            /*System.out.println("________________________________________________________________________________________ ");*/
+                System.out.println("Deadline " + deadlines.indexOf(deadline) + " (" + initialDate + " to " + finalDate + "): " + totalCommits);
+                System.out.println("Per Week Commits: " + Arrays.toString(perWeekCommits.toArray()));
+           /* System.out.println();
             System.out.println("Monday: " + commits[0]);
             System.out.println("Tuesday: " + commits[1]);
             System.out.println("Wednesday: " + commits[2]);
@@ -101,20 +147,17 @@ public class Main {
             System.out.println("Saturday: " + commits[5]);
             System.out.println("Sunday: " + commits[6]);
             System.out.println("Total Commits: " + totalCommits);
-            System.out.println("________________________________________________________________________________________ ");
-            totalRepoCommits2 += totalCommits;
-        }
-
-        for (Integer a : commitTracking) {
-            if (a == 0) {
-                System.out.println("Commit Faltante: " + output.get(commitTracking.indexOf(a)));
+            System.out.println("________________________________________________________________________________________ ");*/
+                totalRepoCommits2 += totalCommits;
             }
+
+
+            System.out.println();
+            System.out.println("Repository Commits 1: " + totalRepoCommits);
+            System.out.println("Repository Commits 2: " + totalRepoCommits2);
+        } else {
+            System.out.println("Parametrization file not found. It should be located on the root folder and name it deadlines.txt!");
         }
-
-
-        System.out.println("Repository Commits 1: " + totalRepoCommits);
-        System.out.println("Repository Commits 2: " + totalRepoCommits2);
-
     }
 
 
@@ -140,19 +183,7 @@ public class Main {
         monthsOfYear.put("nov", 11);
         monthsOfYear.put("dec", 12);
 
-        int[] deadline1 = {1, 8, 31, 7, 9, 13};
-        int[] deadline2 = {1, 9, 14, 7, 10, 4};
-        int[] deadline3 = {1, 10, 5, 7, 10, 18};
-        int[] deadline4 = {1, 10, 19, 7, 11, 1};
-        int[] deadline5 = {1, 11, 2, 7, 11, 15};
-        int[] deadline6 = {1, 11, 16, 7, 12, 29};
 
-        deadlines.add(deadline1);
-        deadlines.add(deadline2);
-        deadlines.add(deadline3);
-        deadlines.add(deadline4);
-        deadlines.add(deadline5);
-        deadlines.add(deadline6);
     }
 
     private static ArrayList executeCommand(String command) {
